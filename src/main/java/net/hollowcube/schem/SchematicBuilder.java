@@ -2,6 +2,8 @@ package net.hollowcube.schem;
 
 import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import java.util.*;
+import net.kyori.adventure.text.*;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
@@ -9,9 +11,8 @@ import net.minestom.server.utils.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jglrxavpok.hephaistos.nbt.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public class SchematicBuilder {
@@ -64,6 +65,8 @@ public class SchematicBuilder {
             paletteMap.put(Block.AIR, 0);
         }
 
+        var blockEntities = new HashMap<Vec, NBTCompound>();
+
         // Write each block to the output buffer
         // Initial buffer size assumes that we have a palette less than 127
         // so each block is one byte. If the palette is larger, we will resize
@@ -105,6 +108,10 @@ public class SchematicBuilder {
                 blockId = paletteMap.getInt(block);
             }
 
+            if (block.hasNbt()) {
+                blockEntities.put(blockPos, block.nbt());
+            }
+
             Utils.writeVarInt(blockBytes, blockId);
         }
 
@@ -116,6 +123,6 @@ public class SchematicBuilder {
         var out = new byte[blockBytes.position()];
         blockBytes.flip().get(out);
 
-        return new Schematic(size, offset, palette, out);
+        return new Schematic(size, offset, palette, out, blockEntities);
     }
 }

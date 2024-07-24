@@ -1,5 +1,7 @@
 package net.hollowcube.schem;
 
+import com.extollit.collect.*;
+import java.util.*;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.batch.BatchOption;
@@ -10,10 +12,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
+import org.jglrxavpok.hephaistos.nbt.*;
 
 /**
  * Represents a schematic file which can be manipulated in the world.
@@ -23,11 +24,12 @@ public record Schematic(
         Point size,
         Point offset,
         Block[] palette,
-        byte[] blocks
+        byte[] blocks,
+        Map<Vec, NBTCompound> blockEntities
 ) {
     private static final System.Logger logger = System.getLogger(Schematic.class.getName());
 
-    static final Schematic EMPTY = new Schematic(Vec.ZERO, Vec.ZERO, new Block[0], new byte[0]);
+    static final Schematic EMPTY = new Schematic(Vec.ZERO, Vec.ZERO, new Block[0], new byte[0], Collections.unmodifiableMap(new HashMap<>()));
 
     public Schematic {
         palette = Arrays.copyOf(palette, palette.length);
@@ -73,7 +75,8 @@ public record Schematic(
 
                     applicator.accept(
                             CoordinateUtil.rotatePos(offset.add(x, y, z), rotation),
-                            CoordinateUtil.rotateBlock(block, rotation));
+                            CoordinateUtil.rotateBlock(block, rotation)
+                                .withNbt(blockEntities.get(new Vec(x, y, z))));
                 }
             }
         }

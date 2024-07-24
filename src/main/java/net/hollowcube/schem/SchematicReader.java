@@ -1,17 +1,15 @@
 package net.hollowcube.schem;
 
 
+import java.util.*;
 import net.minestom.server.command.builder.arguments.minecraft.ArgumentBlockState;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.collections.ImmutableByteArray;
-import org.jglrxavpok.hephaistos.nbt.CompressedProcesser;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
-import org.jglrxavpok.hephaistos.nbt.NBTInt;
-import org.jglrxavpok.hephaistos.nbt.NBTReader;
+import org.jglrxavpok.hephaistos.collections.*;
+import org.jglrxavpok.hephaistos.nbt.*;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -84,6 +82,15 @@ public final class SchematicReader {
         NBTCompound palette;
         ImmutableByteArray blockArray;
         Integer paletteSize;
+        NBTList<NBTCompound> blockEntitiesNbt;
+
+        if(version == 1) {
+            //blockEntitiesNbt = tag.getList("TileEntities");
+            throw new IllegalArgumentException("unsupported tile entities in version 1");
+
+        }else {
+            blockEntitiesNbt = tag.getList("BlockEntities");
+        }
 
         if (version == 3) {
             var blockEntries = tag.getCompound("Blocks");
@@ -94,6 +101,7 @@ public final class SchematicReader {
             blockArray = blockEntries.getByteArray("Data");
             Check.notNull(blockArray, "Missing required field 'Blocks.Data'");
             paletteSize = palette.getSize();
+
         } else {
             palette = tag.getCompound("Palette");
             Check.notNull(palette, "Missing required field 'Palette'");
@@ -111,11 +119,25 @@ public final class SchematicReader {
             paletteBlocks[assigned] = block;
         });
 
+        var blockEntities = new HashMap<Vec, NBTCompound>();
+
+        if(blockEntitiesNbt != null) {
+            for (NBTCompound tileNbt : blockEntitiesNbt) {
+                ImmutableIntArray pos = tileNbt.getIntArray("Pos");
+                if (pos == null)
+                    continue;
+                Vec handyPos = new Vec(pos.get(0), pos.get(1), pos.get(2));
+                NBTCompound refinedTileNbt = tileNbt.withRemovedKeys("Pos");
+                blockEntities.put(handyPos, refinedTileNbt);
+            }
+        }
+
         return new Schematic(
                 new Vec(width, height, length),
                 offset,
                 paletteBlocks,
-                blockArray.copyArray()
+                blockArray.copyArray(),
+                blockEntities
         );
     }
 
