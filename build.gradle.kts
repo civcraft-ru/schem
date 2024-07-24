@@ -39,14 +39,11 @@ tasks.test {
 nexusPublishing {
     this.packageGroup.set("dev.hollowcube")
 
-    repositories.sonatype {
-        nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-        snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-
-        if (System.getenv("SONATYPE_USERNAME") != null) {
-            username.set(System.getenv("SONATYPE_USERNAME"))
-            password.set(System.getenv("SONATYPE_PASSWORD"))
-        }
+    repositories.maven {
+        name.set("GitHubPackages")
+        url.set(uri("https://maven.pkg.github.com/octocat/hello-world"))
+        credentials.username.set(System.getenv("GITHUB_ACTOR"))
+        credentials.password.set(System.getenv("GITHUB_TOKEN"))
     }
 }
 
@@ -60,12 +57,12 @@ publishing.publications.create<MavenPublication>("maven") {
     pom {
         name.set(artifactId)
         description.set(project.description)
-        url.set("https://github.com/hollow-cube/schem")
+        url.set("https://github.com/civcraft-ru/schem")
 
         licenses {
             license {
                 name.set("MIT")
-                url.set("https://github.com/hollow-cube/schem/blob/main/LICENSE")
+                url.set("https://github.com/civcraft-ru/schem/blob/main/LICENSE")
             }
         }
 
@@ -75,23 +72,29 @@ publishing.publications.create<MavenPublication>("maven") {
                 name.set("Matt Worzala")
                 email.set("matt@hollowcube.dev")
             }
+
+            developer {
+                id.set("hohserg")
+                name.set("hohserg")
+                email.set("hohserg1@gmail.com")
+            }
         }
 
         issueManagement {
             system.set("GitHub")
-            url.set("https://github.com/hollow-cube/schem/issues")
+            url.set("https://github.com/civcraft-ru/schem/issues")
         }
 
         scm {
-            connection.set("scm:git:git://github.com/hollow-cube/schem.git")
-            developerConnection.set("scm:git:git@github.com:hollow-cube/schem.git")
-            url.set("https://github.com/hollow-cube/schem")
+            connection.set("scm:git:git://github.com/civcraft-ru/schem.git")
+            developerConnection.set("scm:git:git@github.com:civcraft-ru/schem.git")
+            url.set("https://github.com/civcraft-ru/schem")
             tag.set(System.getenv("TAG_VERSION") ?: "HEAD")
         }
 
         ciManagement {
             system.set("Github Actions")
-            url.set("https://github.com/hollow-cube/schem/actions")
+            url.set("https://github.com/civcraft-ru/schem/actions")
         }
     }
 }
