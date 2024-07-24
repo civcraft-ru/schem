@@ -100,7 +100,7 @@ publishing.publications.create<MavenPublication>("maven") {
         }
     }
 }
-
+/*
 signing {
     isRequired = System.getenv("CI") != null
 
@@ -110,3 +110,4 @@ signing {
 
     sign(publishing.publications)
 }
+*/
