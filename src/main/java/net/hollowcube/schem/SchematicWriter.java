@@ -1,10 +1,10 @@
 package net.hollowcube.schem;
 
+import java.util.*;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.nbt.CompressedProcesser;
-import org.jglrxavpok.hephaistos.nbt.NBTWriter;
+import org.jglrxavpok.hephaistos.nbt.*;
 import org.jglrxavpok.hephaistos.nbt.mutable.MutableNBTCompound;
 
 import java.io.ByteArrayOutputStream;
@@ -40,6 +40,13 @@ public class SchematicWriter {
             palette.setInt(BlockUtil.toStateString(blocks[i]), i);
         }
         schematicNBT.set("Palette", palette.toCompound());
+
+        List<NBTCompound> blockEntitiesNBT = new ArrayList<>();
+        schematic.blockEntities().forEach((pos, tile)->{
+            NBTCompound withPos = tile.modify(a -> a.setIntArray("Pos", new int[]{pos.blockX(), pos.blockY(), pos.blockZ()}));
+            blockEntitiesNBT.add(withPos);
+        });
+        schematicNBT.set("BlockEntities", NBT.List(NBTType.TAG_Compound, blockEntitiesNBT));
 
         var out = new ByteArrayOutputStream();
         try (NBTWriter writer = new NBTWriter(out, CompressedProcesser.GZIP)) {
