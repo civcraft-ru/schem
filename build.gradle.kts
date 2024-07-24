@@ -36,14 +36,16 @@ tasks.test {
     useJUnitPlatform()
 }
 
-nexusPublishing {
-    this.packageGroup.set("dev.hollowcube")
-
-    repositories.maven {
-        name.set("GitHubPackages")
-        url.set(uri("https://maven.pkg.github.com/octocat/hello-world"))
-        credentials.username.set(System.getenv("GITHUB_ACTOR"))
-        credentials.password.set(System.getenv("GITHUB_TOKEN"))
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/civcraft-ru/schem")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
 
