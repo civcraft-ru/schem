@@ -84,13 +84,7 @@ public final class SchematicReader {
         Integer paletteSize;
         NBTList<NBTCompound> blockEntitiesNbt;
 
-        if(version == 1) {
-            //blockEntitiesNbt = tag.getList("TileEntities");
-            throw new IllegalArgumentException("unsupported tile entities in version 1");
-
-        }else {
-            blockEntitiesNbt = tag.getList("BlockEntities");
-        }
+        blockEntitiesNbt = tag.getList("BlockEntities");
 
         if (version == 3) {
             var blockEntries = tag.getCompound("Blocks");
