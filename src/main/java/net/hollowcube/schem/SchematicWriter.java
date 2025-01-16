@@ -1,11 +1,16 @@
 package net.hollowcube.schem;
 
 import java.util.*;
+
+import it.unimi.dsi.fastutil.Pair;
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.BinaryTagTypes;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.nbt.*;
-import org.jglrxavpok.hephaistos.nbt.mutable.MutableNBTCompound;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,42 +20,43 @@ import java.nio.file.Path;
 public class SchematicWriter {
 
     public static byte@NotNull [] write(@NotNull Schematic schematic) {
-        MutableNBTCompound schematicNBT = new MutableNBTCompound();
+        CompoundBinaryTag.Builder schematicNBT = CompoundBinaryTag.builder();
         Point size = schematic.size();
-        schematicNBT.setShort("Width", (short) size.x());
-        schematicNBT.setShort("Height", (short) size.y());
-        schematicNBT.setShort("Length", (short) size.z());
+        schematicNBT.putShort("Width", (short) size.x());
+        schematicNBT.putShort("Height", (short) size.y());
+        schematicNBT.putShort("Length", (short) size.z());
 
         Point offset = schematic.offset();
-        MutableNBTCompound schematicMetadata = new MutableNBTCompound();
-        schematicMetadata.setInt("WEOffsetX", offset.blockX());
-        schematicMetadata.setInt("WEOffsetY", offset.blockY());
-        schematicMetadata.setInt("WEOffsetZ", offset.blockZ());
+        CompoundBinaryTag.Builder schematicMetadata = CompoundBinaryTag.builder();
+        schematicMetadata.putInt("WEOffsetX", offset.blockX());
+        schematicMetadata.putInt("WEOffsetY", offset.blockY());
+        schematicMetadata.putInt("WEOffsetZ", offset.blockZ());
 
-        schematicNBT.set("Metadata", schematicMetadata.toCompound());
+        schematicNBT.put("Metadata", schematicMetadata.build());
 
-        schematicNBT.setByteArray("BlockData", schematic.blocks());
+        schematicNBT.putByteArray("BlockData", schematic.blocks());
         Block[] blocks = schematic.palette();
 
-        schematicNBT.setInt("PaletteMax", blocks.length);
+        schematicNBT.putInt("PaletteMax", blocks.length);
 
-        MutableNBTCompound palette = new MutableNBTCompound();
+        CompoundBinaryTag.Builder palette = CompoundBinaryTag.builder();
         for (int i = 0; i < blocks.length; i++) {
             if (blocks[i] == null) blocks[i] = Block.AIR;
-            palette.setInt(BlockUtil.toStateString(blocks[i]), i);
+            palette.putInt(BlockUtil.toStateString(blocks[i]), i);
         }
-        schematicNBT.set("Palette", palette.toCompound());
+        schematicNBT.put("Palette", palette.build());
 
-        List<NBTCompound> blockEntitiesNBT = new ArrayList<>();
-        schematic.blockEntities().forEach((pos, tile)->{
-            NBTCompound withPos = tile.modify(a -> a.setIntArray("Pos", new int[]{pos.blockX(), pos.blockY(), pos.blockZ()}));
+        List<CompoundBinaryTag> blockEntitiesNBT = new ArrayList<>();
+        schematic.blockEntities().forEach((Vec pos, CompoundBinaryTag tile) ->{
+            CompoundBinaryTag withPos = tile.putIntArray("Pos", new int[]{pos.blockX(), pos.blockY(), pos.blockZ()});
             blockEntitiesNBT.add(withPos);
         });
-        schematicNBT.set("BlockEntities", NBT.List(NBTType.TAG_Compound, blockEntitiesNBT));
+        schematicNBT.put("BlockEntities", ListBinaryTag.from(blockEntitiesNBT));
 
         var out = new ByteArrayOutputStream();
-        try (NBTWriter writer = new NBTWriter(out, CompressedProcesser.GZIP)) {
-            writer.writeNamed("Schematic", schematicNBT.toCompound());
+
+        try {
+            BinaryTagIO.writer().writeNamed(new AbstractMap.SimpleEntry("Schematic", schematicNBT.build()),out, BinaryTagIO.Compression.GZIP);
         } catch (IOException e) {
             // No exceptions when writing to a byte array
             throw new RuntimeException(e);

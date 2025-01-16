@@ -2,14 +2,16 @@ package net.hollowcube.schem;
 
 
 import java.util.*;
+
+import net.kyori.adventure.nbt.BinaryTagIO;
+import net.kyori.adventure.nbt.CompoundBinaryTag;
+import net.kyori.adventure.nbt.IntBinaryTag;
+import net.kyori.adventure.nbt.ListBinaryTag;
 import net.minestom.server.command.builder.arguments.minecraft.ArgumentBlockState;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.validate.Check;
 import org.jetbrains.annotations.NotNull;
-import org.jglrxavpok.hephaistos.collections.*;
-import org.jglrxavpok.hephaistos.nbt.*;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -23,27 +25,25 @@ public final class SchematicReader {
     }
 
     public static @NotNull Schematic read(@NotNull InputStream stream) {
-        try (var reader = new NBTReader(stream, CompressedProcesser.GZIP)) {
-            return read(reader);
+        try {
+            return read(BinaryTagIO.unlimitedReader().read(stream));
         } catch (Exception e) {
             throw new SchematicReadException("failed to read schematic NBT", e);
         }
     }
 
     public static @NotNull Schematic read(@NotNull Path path) {
-        try (var reader = new NBTReader(path, CompressedProcesser.GZIP)) {
-            return read(reader);
+        try {
+            return read(BinaryTagIO.unlimitedReader().read(path));
         } catch (Exception e) {
             throw new SchematicReadException("failed to read schematic NBT", e);
         }
     }
 
-    public static @NotNull Schematic read(@NotNull NBTReader reader) {
+    public static @NotNull Schematic read(@NotNull CompoundBinaryTag root) {
         try {
-            NBTCompound tag = (NBTCompound) reader.read();
-
             // If it has a Schematic tag is sponge v2 or 3
-            var schematicTag = tag.getCompound("Schematic");
+            var schematicTag = root.getCompound("Schematic");
             if (schematicTag != null) {
                 Integer version = schematicTag.getInt("Version");
                 Check.notNull(version, "Missing required field 'Schematic.Version'");
@@ -51,13 +51,13 @@ public final class SchematicReader {
             }
 
             // Otherwise it is hopefully v1
-            return read(tag, 1);
+            return read(root, 1);
         } catch (Exception e) {
             throw new SchematicReadException("Invalid schematic file", e);
         }
     }
 
-    private static @NotNull Schematic read(@NotNull NBTCompound tag, int version) {
+    private static @NotNull Schematic read(@NotNull CompoundBinaryTag tag, int version) {
         Short width = tag.getShort("Width");
         Check.notNull(width, "Missing required field 'Width'");
         Short height = tag.getShort("Height");
@@ -65,10 +65,10 @@ public final class SchematicReader {
         Short length = tag.getShort("Length");
         Check.notNull(length, "Missing required field 'Length'");
 
-        NBTCompound metadata = tag.getCompound("Metadata");
+        CompoundBinaryTag metadata = tag.getCompound("Metadata");
 
         var offset = Vec.ZERO;
-        if (metadata != null && metadata.containsKey("WEOffsetX")) {
+        if (metadata != null && metadata.keySet().contains("WEOffsetX")) {
             Integer offsetX = metadata.getInt("WEOffsetX");
             Check.notNull(offsetX, "Missing required field 'Metadata.WEOffsetX'");
             Integer offsetY = metadata.getInt("WEOffsetY");
@@ -79,12 +79,10 @@ public final class SchematicReader {
             offset = new Vec(offsetX, offsetY, offsetZ);
         } //todo handle sponge Offset
 
-        NBTCompound palette;
-        ImmutableByteArray blockArray;
+        CompoundBinaryTag palette;
+        byte[] blockArray;
         Integer paletteSize;
-        NBTList<NBTCompound> blockEntitiesNbt;
-
-        blockEntitiesNbt = tag.getList("BlockEntities");
+        ListBinaryTag blockEntitiesNbt = tag.getList("BlockEntities");
 
         if (version == 3) {
             var blockEntries = tag.getCompound("Blocks");
@@ -94,7 +92,7 @@ public final class SchematicReader {
             Check.notNull(palette, "Missing required field 'Blocks.Palette'");
             blockArray = blockEntries.getByteArray("Data");
             Check.notNull(blockArray, "Missing required field 'Blocks.Data'");
-            paletteSize = palette.getSize();
+            paletteSize = palette.size();
 
         } else {
             palette = tag.getCompound("Palette");
@@ -107,21 +105,22 @@ public final class SchematicReader {
 
         Block[] paletteBlocks = new Block[paletteSize];
 
-        palette.forEach((key, value) -> {
-            int assigned = ((NBTInt) value).getValue();
-            Block block = ArgumentBlockState.staticParse(key);
+        palette.forEach(e -> {
+            int assigned = ((IntBinaryTag) e.getValue()).value();
+            Block block = ArgumentBlockState.staticParse(e.getKey());
             paletteBlocks[assigned] = block;
         });
 
-        var blockEntities = new HashMap<Vec, NBTCompound>();
+        var blockEntities = new HashMap<Vec, CompoundBinaryTag>();
 
         if(blockEntitiesNbt != null) {
-            for (NBTCompound tileNbt : blockEntitiesNbt) {
-                ImmutableIntArray pos = tileNbt.getIntArray("Pos");
+            for (int i=0; i<blockEntitiesNbt.size();i++) {
+                CompoundBinaryTag tileNbt=blockEntitiesNbt.getCompound(i);
+                int[] pos = tileNbt.getIntArray("Pos");
                 if (pos == null)
                     continue;
-                Vec handyPos = new Vec(pos.get(0), pos.get(1), pos.get(2));
-                NBTCompound refinedTileNbt = tileNbt.withRemovedKeys("Pos");
+                Vec handyPos = new Vec(pos[0], pos[1], pos[2]);
+                CompoundBinaryTag refinedTileNbt = tileNbt.remove("Pos");
                 blockEntities.put(handyPos, refinedTileNbt);
             }
         }
@@ -130,7 +129,7 @@ public final class SchematicReader {
                 new Vec(width, height, length),
                 offset,
                 paletteBlocks,
-                blockArray.copyArray(),
+                blockArray.clone(),
                 blockEntities
         );
     }

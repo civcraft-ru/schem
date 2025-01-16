@@ -16,8 +16,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly(libs.minestom)
-    testImplementation(libs.minestom)
+    implementation("net.minestom:minestom-snapshots:698af959c8")
+    implementation("net.kyori:adventure-api:4.14.0")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -28,8 +28,9 @@ java {
     withSourcesJar()
     withJavadocJar()
 
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 tasks.test {

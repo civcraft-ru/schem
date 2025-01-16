@@ -1,20 +1,19 @@
 package net.hollowcube.schem;
 
-import com.extollit.collect.*;
 import java.util.*;
+
+import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.batch.BatchOption;
 import net.minestom.server.instance.batch.RelativeBlockBatch;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.utils.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
-import org.jglrxavpok.hephaistos.nbt.*;
 
 /**
  * Represents a schematic file which can be manipulated in the world.
@@ -25,7 +24,7 @@ public record Schematic(
         Point offset,
         Block[] palette,
         byte[] blocks,
-        Map<Vec, NBTCompound> blockEntities
+        Map<Vec, CompoundBinaryTag> blockEntities
 ) {
     private static final System.Logger logger = System.getLogger(Schematic.class.getName());
 
@@ -67,7 +66,7 @@ public record Schematic(
         for (int y = 0; y < size().y(); y++) {
             for (int z = 0; z < size().z(); z++) {
                 for (int x = 0; x < size().x(); x++) {
-                    var block = palette[Utils.readVarInt(blocks)];
+                    var block = palette[readVarInt(blocks)];
                     if (block == null) {
                         logger.log(System.Logger.Level.WARNING, "Missing palette entry at {0}, {1}, {2}", x, y, z);
                         block = Block.AIR;
@@ -78,6 +77,18 @@ public record Schematic(
                             CoordinateUtil.rotateBlock(block, rotation)
                                 .withNbt(blockEntities.get(new Vec(x, y, z))));
                 }
+            }
+        }
+    }
+
+    public static int readVarInt(ByteBuffer buf) {
+        // https://github.com/jvm-profiling-tools/async-profiler/blob/a38a375dc62b31a8109f3af97366a307abb0fe6f/src/converter/one/jfr/JfrReader.java#L393
+        int result = 0;
+        for (int shift = 0; ; shift += 7) {
+            byte b = buf.get();
+            result |= (b & 0x7f) << shift;
+            if (b >= 0) {
+                return result;
             }
         }
     }
